@@ -18,7 +18,7 @@ except ImportError:  # Python 2
     from urllib2 import URLError
 
 
-__version__ = '1.0.2'
+__version__ = '1.0.3'
 
 logger = logging.getLogger('rasterprynt')
 
