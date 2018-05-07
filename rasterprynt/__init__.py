@@ -236,12 +236,15 @@ def prynt(images, ip, top_margin=TOP_MARGIN_DEFAULT, bottom_margin=BOTTOM_MARGIN
 def main():
     import PIL.Image
 
-    parser = argparse.ArgumentParser('Print images on to a Brother P-Touch printer')
+    parser = argparse.ArgumentParser('Print images to a Brother P-Touch printer')
     parser.add_argument(
         'ip', metavar='IP', help='IP address (or domain name) of the printer')
     parser.add_argument(
         'image_files', metavar='IMAGE', nargs='*'
     )
+    parser.add_argument(
+        '--to-file', metavar='FILENAME',
+        help='Write the sent binary data to a file instead of printing it')
     parser.add_argument(
         '--detect-device', action='store_true',
         help='Detect which printer is running at the specified IP address')
@@ -266,6 +269,12 @@ def main():
     ]
     if not images:
         parser.error('No images given')
+        return
+
+    if args.to_file:
+        data = cat(images, args.ip, top_margin=args.top_margin, bottom_margin=args.bottom_margin)
+        with open(args.to_file, 'wb') as outf:
+            outf.write(data)
         return
 
     prynt(images, args.ip, top_margin=args.top_margin, bottom_margin=args.bottom_margin)
