@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import argparse
-import binascii
 import struct
 
 
@@ -30,25 +29,6 @@ def tiff_uncompress(data):
             dlen = num + 1
             yield data[p + 1:p + 1 + dlen]
             p += 1 + dlen
-
-
-def test_tiff_uncompress():
-    assert b''.join(
-        tiff_uncompress(b'\x02\xa1\xa2\xa3')
-    ) == b'\xa1\xa2\xa3'
-
-    got = b''.join(
-        tiff_uncompress(b'\xfe\xa1')
-    )
-    assert got == b'\xa1\xa1\xa1'
-
-    example = b''.join(
-        tiff_uncompress(b'\xED\x00\xFF\x22\x05\x23\xBA\xBF\xA2\x22\x2B')
-    )
-    assert example == (
-         b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x22\x22\x23\xBA\xBF\xA2\x22\x2B'
-    )
-test_tiff_uncompress()
 
 
 def read_rows(bc):
@@ -101,7 +81,6 @@ def read_rows(bc):
             p += 1
             continue
 
-
         # ESC code
         if bc[p] != 0x1b:
             raise ValueError(
@@ -129,9 +108,11 @@ def read_rows(bc):
                 elif mode == MODE_RASTER and subsubcmd == ord('J'):  # TODO ??
                     p += 14
                 else:
-                    raise NotImplementedError('Unsupported bus subsubcommand of iU in mode %s: %s / 0x%02x' % (mode, chr(subsubcmd), subsubcmd))
-            elif mode == MODE_RASTER and subcmd == ord('z'):  # TODO ??
-                print('Unknown command iz, args %s' % hexstr(bc[p+1:p+11]))
+                    raise NotImplementedError(
+                        'Unsupported bus subsubcommand of iU in mode %s: %s / 0x%02x' %
+                        (mode, chr(subsubcmd), subsubcmd))
+            elif mode == MODE_RASTER and subcmd == ord('z'):
+                print('Print information command: %s' % hexstr(bc[p+1:p+11]))
                 p += 10
             elif mode == MODE_RASTER and subcmd == ord('A'):  # TODO ??
                 print('Unknown command iA, args %s' % hexstr(bc[p+1:p+2]))
@@ -151,7 +132,9 @@ def read_rows(bc):
                     raise NotImplementedError('Strange bits in Various Mode settings: 0x%02x' % bc[p])
                 mirroring = (bc[p] & 0x4) != 0
             else:
-                raise NotImplementedError('Unsupported subcommand i %s / 0x%02x in mode %s' % (chr(subcmd), subcmd, mode))
+                raise NotImplementedError(
+                    'Unsupported subcommand i %s / 0x%02x in mode %s' %
+                    (chr(subcmd), subcmd, mode))
         else:
             raise NotImplementedError('Unsupported command %s / 0x%02x' % (chr(cmd), cmd))
 

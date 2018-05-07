@@ -138,7 +138,6 @@ def _get_bytes(img):
     return img.load()
 
 
-
 def render(images, ip=None, top_margin=TOP_MARGIN_DEFAULT, bottom_margin=BOTTOM_MARGIN_DEFAULT, printer_model=None):
     # Yields bytes that can be printed on a Brother P950NW(new printer) or Brother 9800PCN(old printer).
     # The protocol here is reverse-engineered from what the Windows driver for brother printers sends.
