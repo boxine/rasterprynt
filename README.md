@@ -31,3 +31,7 @@ The main method is `rasterprynt.prynt`, which takes a list of images. Cuts will 
 
     img = PIL.open('image.png')
     data = rasterprynt.prynt(ip='192.168.1.123', [img, img, img])
+
+## Additional utilities
+
+`plotimg.py` provides a way to do the reverse transformation.
