@@ -9,13 +9,25 @@ This uses an undocumented reverse-engineered protocol, similar to the one in use
 
 At the moment, the tape width is fixed at 18mm and the quality as high, but patches are always welcome.
 
-## Usage
+## Installation
 
-The main method is `rasterprynt.print`, which takes a list of images. Cuts will be inserted in between the images.
+As a depency, depend on the PyPi package `rasterprynt`. To install dependencies for a command-line installation, type
+
+	$ pip install -r requirements.txt
+
+## Command Line Usage
+
+All functionality is available as a command-line program, like this:
+
+   $ python -m rasterprynt 192.168.1.123 img1.png img2.jpg img1.png --top-margin 10
+
+## Library Usage
+
+The main method is `rasterprynt.prynt`, which takes a list of images. Cuts will be inserted in between the images.
 
     import rasterprynt
 
-    from Pillow import Image
+    from PIL import Image
 
-    img = Pillow.open('image.png')
-    data = rasterprynt.print(ip='192.168.1.123', [img, img, img])
+    img = PIL.open('image.png')
+    data = rasterprynt.prynt(ip='192.168.1.123', [img, img, img])

@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+
+from __future__ import unicode_literals
+
+import argparse
 import contextlib
 import logging
 import socket
@@ -22,6 +27,9 @@ STRIPE_SIZE = {
 }
 STRIPE_SIZE_DEFAULT = STRIPE_SIZE['P950NW']
 
+
+TOP_MARGIN_DEFAULT = 8
+BOTTOM_MARGIN_DEFAULT = 8
 
 # Cache of IP address -> model name
 _PRINTER_BY_IP = {}
@@ -116,7 +124,22 @@ def _empty_row(stripe_count, use_tiff):
         return (b'G' + struct.pack('<H', stripe_count) + (b'\x00' * stripe_count))
 
 
-def render(images, ip=None, printer_model=None, top_margin=8, bottom_margin=8):
+def _get_bytes(img):
+    if img.mode == 'P':
+        img = img.convert('RGBA')
+
+    if img.mode == 'RGBA':
+        from PIL import Image
+        # Thanks to https://stackoverflow.com/a/9459208/35070
+        new_img = Image.new('RGB', img.size, (255, 255, 255))
+        new_img.paste(img, mask=img.split()[3])
+        img = new_img
+
+    return img.load()
+
+
+
+def render(images, ip=None, top_margin=TOP_MARGIN_DEFAULT, bottom_margin=BOTTOM_MARGIN_DEFAULT, printer_model=None):
     # Yields bytes that can be printed on a Brother P950NW(new printer) or Brother 9800PCN(old printer).
     # The protocol here is reverse-engineered from what the Windows driver for brother printers sends.
     # Many commands are documented at
@@ -126,6 +149,7 @@ def render(images, ip=None, printer_model=None, top_margin=8, bottom_margin=8):
     # can also help.
     # Our old code and brother sends 200 0-bytes here (maybe to synchronize the serial bus? No need for that via TCP)
 
+    # We support TIFF, but it seems to introduce artifacts on some printers, so disable it.
     USE_TIFF = False
 
     if printer_model is None:
@@ -149,7 +173,7 @@ def render(images, ip=None, printer_model=None, top_margin=8, bottom_margin=8):
         else:
             yield b'\x0c'
 
-        img_bytes = img.load()
+        img_bytes = _get_bytes(img)
 
         # The "raster number" seems to be the width, or length of the stripe
         raster_number = img.width + top_margin + bottom_margin
@@ -193,13 +217,59 @@ def render(images, ip=None, printer_model=None, top_margin=8, bottom_margin=8):
     yield b'\x1a'  # Print
 
 
-def cat(images, ip=None, top_margin=8, bottom_margin=8):
+def cat(images, ip=None, top_margin=TOP_MARGIN_DEFAULT, bottom_margin=BOTTOM_MARGIN_DEFAULT):
     return b''.join(
-        render(images, ip, top_margin=top_margin, bottom_margin=bottom_margin))
+        render(images, ip=ip, top_margin=top_margin, bottom_margin=bottom_margin))
 
 
-def print(images, ip, top_margin=8, bottom_margin=8):
-    data = cat(images, ip, top_margin, bottom_margin)
+def send(data, ip):
     sock = socket.create_connection((ip, 9100))
     sock.sendall(data)
     sock.close()
+
+
+def prynt(images, ip, top_margin=TOP_MARGIN_DEFAULT, bottom_margin=BOTTOM_MARGIN_DEFAULT):
+    data = cat(images, ip, top_margin, bottom_margin)
+    send(data, ip)
+
+
+def main():
+    import PIL.Image
+
+    parser = argparse.ArgumentParser('Print images on to a Brother P-Touch printer')
+    parser.add_argument(
+        'ip', metavar='IP', help='IP address (or domain name) of the printer')
+    parser.add_argument(
+        'image_files', metavar='IMAGE', nargs='*'
+    )
+    parser.add_argument(
+        '--detect-device', action='store_true',
+        help='Detect which printer is running at the specified IP address')
+    parser.add_argument(
+        '--top-margin', default=TOP_MARGIN_DEFAULT, metavar='INT', type=int,
+        help='Margin before every image, in pixels (default: %(default)s)')
+    parser.add_argument(
+        '--bottom-margin', default=BOTTOM_MARGIN_DEFAULT, metavar='INT', type=int,
+        help='Margin after every image, in pixels (default: %(default)s)')
+    args = parser.parse_args()
+
+    if args.detect_device:
+        if args.image_files:
+            parser.error('Images given with --detect-device')
+            return
+
+        print(detect_printer_model(args.ip))
+        return
+
+    images = [
+        PIL.Image.open(img_file) for img_file in args.image_files
+    ]
+    if not images:
+        parser.error('No images given')
+        return
+
+    prynt(images, args.ip, top_margin=args.top_margin, bottom_margin=args.bottom_margin)
+
+
+if __name__ == '__main__':
+    main()
