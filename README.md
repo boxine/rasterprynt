@@ -13,7 +13,7 @@ At the moment, the tape width is fixed at 18mm and the quality as high, but patc
 
 As a depency, depend on the PyPi package `rasterprynt`. To install dependencies for a command-line installation, type
 
-	$ pip install -r requirements.txt
+    $ pip install -r requirements.txt
 
 ## Command Line Usage
 
@@ -27,10 +27,14 @@ The main method is `rasterprynt.prynt`, which takes a list of images. Cuts will 
 
     import rasterprynt
 
-    from PIL import Image
+    import PIL.Image
 
-    img = PIL.open('image.png')
-    data = rasterprynt.prynt(ip='192.168.1.123', [img, img, img])
+    # Enter the IP address of your printer below
+    printer_ip = '192.168.1.123'
+
+    img1 = PIL.Image.open('example1.png')
+    img2 = PIL.Image.open('example2.png')
+    data = rasterprynt.prynt([img1, img2, img1], printer_ip)
 
 ## Additional utilities
 
