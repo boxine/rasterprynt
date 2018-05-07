@@ -15,7 +15,7 @@ pypi:
 release:
 	if test -z "${VERSION}"; then echo VERSION missing; exit 1; fi
 	sed -i "s#^\(__version__\s*=\s*'\)[^']*'\$$#\1${VERSION}'#" rasterprynt/__init__.py
-	sed -i "s#^\(\s*'version':\s*'\)[^']*\('.*\)\$$#\1${VERSION}\2#" setup.py
+	sed -i "s#^\(\s*version=\s*'\)[^']*\(',.*\)\$$#\1${VERSION}\2#" setup.py
 	git diff
 	git add rasterprynt/__init__.py setup.py
 	git commit -m "release ${VERSION}"
