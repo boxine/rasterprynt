@@ -13,7 +13,7 @@ except ImportError:  # Python 2
     from urllib2 import URLError
 
 
-logger = logging.getLogger('printer')
+logger = logging.getLogger('rasterprynt')
 
 # All 18mm. Size of a stripe (height in Brother-talk)
 STRIPE_SIZE = {
