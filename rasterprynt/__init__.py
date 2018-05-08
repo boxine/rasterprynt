@@ -29,7 +29,6 @@ STRIPE_SIZE = {
 }
 STRIPE_SIZE_DEFAULT = STRIPE_SIZE['P950NW']
 
-
 TOP_MARGIN_DEFAULT = 8
 BOTTOM_MARGIN_DEFAULT = 8
 
@@ -117,15 +116,6 @@ def _raw_row(img, img_bytes, stripe_count, x, y_offset):
         yield struct.pack('!B', bits)
 
 
-def _empty_row(stripe_count, use_tiff):
-    if use_tiff:
-        compressed = b''.join(_compress_tiff(b'\x00' * stripe_count))
-        assert compressed == struct.pack('!bB', 1 - stripe_count, 0)
-        return (b'G' + struct.pack('<H', len(compressed)) + compressed)
-    else:
-        return (b'G' + struct.pack('<H', stripe_count) + (b'\x00' * stripe_count))
-
-
 def _get_bytes(img):
     if img.mode == 'P':
         img = img.convert('RGBA')
@@ -153,8 +143,11 @@ def render(images, ip=None, top_margin=TOP_MARGIN_DEFAULT, bottom_margin=BOTTOM_
     # We support TIFF, but it seems to introduce artifacts on some printers, so disable it.
     USE_TIFF = False
 
+    yield b'\x00' * 200
+
     if printer_model is None:
         printer_model = detect_printer_model(ip) if ip else None
+    assert printer_model in ('P950NW', '9800PCN')
 
     # number of dots in a stripe (depends on printer + tape size)
     stripe_size = STRIPE_SIZE.get(printer_model, STRIPE_SIZE_DEFAULT)
@@ -163,7 +156,6 @@ def render(images, ip=None, top_margin=TOP_MARGIN_DEFAULT, bottom_margin=BOTTOM_
 
     yield b'\x1b@'  # Init
     yield b'\x1bia\x01'  # Raster mode
-
     yield b'\x1biM\x00'  # Various Mode settings: no auto cut
     yield b'\x1bid\x00\x00'  # Margin = 0
 
@@ -176,27 +168,45 @@ def render(images, ip=None, top_margin=TOP_MARGIN_DEFAULT, bottom_margin=BOTTOM_
 
         img_bytes = _get_bytes(img)
 
-        # The "raster number" seems to be the width, or length of the stripe
-        raster_number = img.width + top_margin + bottom_margin
+        cut_correction = 0  # Correction factor for cuts: Cuts come this much after we send the signal to cut
+        if printer_model == 'P950NW':
+            # The "raster number" seems to be the width, or length of the stripe
+            raster_number = img.width + top_margin + bottom_margin
 
-        yield (
-            b'\x1biz'  # Print information command
-            b'\xc0' +  # PI_RECOVER | PI_QUALITY
-            b'\x00' +  # Media type: not set
-            b'\x00' +  # Media width, e.g. 18 = 18mm. We're setting it to 0 (unspecified)
-            b'\x00' +  # Media length: not set
-            struct.pack('<I', raster_number) +  # "Raster number"
-            (b'\x00' if first else b'\x01') +  # Starting page?
-            b'\x00')   # This byte is always 0 (reserved)
+            yield (
+                b'\x1biz'  # Print information command
+                b'\xc0' +  # PI_RECOVER | PI_QUALITY
+                b'\x00' +  # Media type: not set
+                b'\x00' +  # Media width, e.g. 18 = 18mm. We're setting it to 0 (unspecified)
+                b'\x00' +  # Media length: not set
+                struct.pack('<I', raster_number) +  # "Raster number"
+                (b'\x00' if first else b'\x01') +  # Starting page?
+                b'\x00')   # This byte is always 0 (reserved)
+        elif printer_model == '9800PCN':
+            # ?? Some kind of initialization.
+            # In our old code, \x01 was labelled "type"
+            # \x12 is the media width in mm (i.e. 18mm)
+            yield b'\x1bic\x8e\x01\x12\x00\x00'
+
+            # Specify feed amount (correction for overly early cutting)
+            yield b'\x1bid' + struct.pack('!B', 0) + b'\x00'
+            cut_correction = 8
+        else:
+            assert False, 'Unsupported printer %s' % printer_model
+
+        if top_margin < cut_correction:
+            raise ValueError(
+                'top margin %d is smaller than cut correction %d of %s' %
+                (top_margin, cut_correction, printer_model))
 
         if USE_TIFF:
-            yield b'\x4d\x02'  # Select compression mode: TIFF
+            yield b'M\x02'  # Select compression mode: TIFF
         else:
-            yield b'\x4d\x00'  # Select compression mode: Simple
+            yield b'M\x00'  # Select compression mode: Simple
 
         # Draw margin.
         # For compatibility with different printers, we send empty lines instead of specifying a margin.
-        yield _empty_row(stripe_count, USE_TIFF) * top_margin
+        yield b'Z' * (top_margin - cut_correction)
 
         for x in range(img.width):
             offset = (stripe_size - img.height)
@@ -204,16 +214,14 @@ def render(images, ip=None, top_margin=TOP_MARGIN_DEFAULT, bottom_margin=BOTTOM_
             row = b''.join(_raw_row(img, img_bytes, stripe_count, x, offset))
             assert len(row) == stripe_count
             if USE_TIFF:
-                compressed_row = b''.join(_compress_tiff(row))
-                yield b'G' + struct.pack('<H', len(compressed_row))
-                yield compressed_row
-            else:
-                yield b'G' + struct.pack('<H', len(row))
-                yield row
+                row = b''.join(_compress_tiff(row))
+
+            yield b'G' + struct.pack('<H', len(row))
+            yield row
 
         # Draw bottom margin.
         # For compatibility with different printers, we send empty lines instead of specifying a margin.
-        yield _empty_row(stripe_count, USE_TIFF) * top_margin
+        yield b'Z' * (bottom_margin + cut_correction)
 
     yield b'\x1a'  # Print
 
