@@ -183,9 +183,9 @@ def render(images, ip=None, top_margin=TOP_MARGIN_DEFAULT, bottom_margin=BOTTOM_
                 (b'\x00' if first else b'\x01') +  # Starting page?
                 b'\x00')   # This byte is always 0 (reserved)
         elif printer_model == '9800PCN':
-             # ?? Some kind of initialization.
-             # In our old code, \x01 was labelled "type"
-             # \x12 is the media width in mm
+            # ?? Some kind of initialization.
+            # In our old code, \x01 was labelled "type"
+            # \x12 is the media width in mm (i.e. 18mm)
             yield b'\x1bic\x8e\x01\x12\x00\x00'
 
             # Specify feed amount (correction for overly early cutting)
