@@ -22,12 +22,15 @@ __version__ = '1.0.4'
 
 logger = logging.getLogger('rasterprynt')
 
-# All 18mm. Size of a stripe (height in Brother-talk)
+# Size of a stripe (height in Brother-talk)
 STRIPE_SIZE = {
-    'P950NW': 408,
-    '9800PCN': 312,
+    ('P950NW', '18mm'): 408,
+    ('P950NW', '36mm'): 536,
+    ('9800PCN', '18mm'): 312,
 }
-STRIPE_SIZE_DEFAULT = STRIPE_SIZE['P950NW']
+STRIPE_SIZE_DEFAULT = STRIPE_SIZE[('P950NW', '18mm')]
+TAPE_SIZE_DEFAULT = '18mm'
+
 
 TOP_MARGIN_DEFAULT = 8
 BOTTOM_MARGIN_DEFAULT = 8
@@ -130,7 +133,9 @@ def _get_bytes(img):
     return img.load()
 
 
-def render(images, ip=None, top_margin=TOP_MARGIN_DEFAULT, bottom_margin=BOTTOM_MARGIN_DEFAULT, printer_model=None):
+def render(images, ip=None,
+           top_margin=TOP_MARGIN_DEFAULT, bottom_margin=BOTTOM_MARGIN_DEFAULT,
+           printer_model=None, tape_size=TAPE_SIZE_DEFAULT):
     # Yields bytes that can be printed on a Brother P950NW(new printer) or Brother 9800PCN(old printer).
     # The protocol here is reverse-engineered from what the Windows driver for brother printers sends.
     # Many commands are documented at
@@ -149,8 +154,12 @@ def render(images, ip=None, top_margin=TOP_MARGIN_DEFAULT, bottom_margin=BOTTOM_
         printer_model = detect_printer_model(ip) if ip else None
     assert printer_model in ('P950NW', '9800PCN')
 
+    # These are the only supported sizes so far
+    assert tape_size in ('18mm', '36mm')
+
     # number of dots in a stripe (depends on printer + tape size)
-    stripe_size = STRIPE_SIZE.get(printer_model, STRIPE_SIZE_DEFAULT)
+    stripe_size = STRIPE_SIZE.get((printer_model, tape_size), STRIPE_SIZE_DEFAULT)
+    print(tape_size, printer_model, stripe_size)
     assert stripe_size % 8 == 0
     stripe_count = stripe_size // 8
 
@@ -226,9 +235,11 @@ def render(images, ip=None, top_margin=TOP_MARGIN_DEFAULT, bottom_margin=BOTTOM_
     yield b'\x1a'  # Print
 
 
-def cat(images, ip=None, top_margin=TOP_MARGIN_DEFAULT, bottom_margin=BOTTOM_MARGIN_DEFAULT):
+def cat(images, ip=None,
+        top_margin=TOP_MARGIN_DEFAULT, bottom_margin=BOTTOM_MARGIN_DEFAULT,
+        tape_size=TAPE_SIZE_DEFAULT):
     return b''.join(
-        render(images, ip=ip, top_margin=top_margin, bottom_margin=bottom_margin))
+        render(images, ip=ip, top_margin=top_margin, bottom_margin=bottom_margin, tape_size=tape_size))
 
 
 def send(data, ip):
@@ -237,8 +248,10 @@ def send(data, ip):
     sock.close()
 
 
-def prynt(images, ip, top_margin=TOP_MARGIN_DEFAULT, bottom_margin=BOTTOM_MARGIN_DEFAULT):
-    data = cat(images, ip, top_margin, bottom_margin)
+def prynt(images, ip,
+          top_margin=TOP_MARGIN_DEFAULT, bottom_margin=BOTTOM_MARGIN_DEFAULT,
+          tape_size=TAPE_SIZE_DEFAULT):
+    data = cat(images, ip, top_margin, bottom_margin, tape_size=tape_size)
     send(data, ip)
 
 
@@ -263,6 +276,9 @@ def main():
     parser.add_argument(
         '--bottom-margin', default=BOTTOM_MARGIN_DEFAULT, metavar='INT', type=int,
         help='Margin after every image, in pixels (default: %(default)s)')
+    parser.add_argument(
+        '--tape-size', default=TAPE_SIZE_DEFAULT, metavar='SIZE',
+        help='Description of tape size (limited support, default: %(default)s)')
     args = parser.parse_args()
 
     if args.detect_device:
@@ -281,12 +297,19 @@ def main():
         return
 
     if args.to_file:
-        data = cat(images, args.ip, top_margin=args.top_margin, bottom_margin=args.bottom_margin)
+        data = cat(
+            images, args.ip,
+            top_margin=args.top_margin, bottom_margin=args.bottom_margin,
+            tape_size=args.tape_size)
+
         with open(args.to_file, 'wb') as outf:
             outf.write(data)
         return
 
-    prynt(images, args.ip, top_margin=args.top_margin, bottom_margin=args.bottom_margin)
+    prynt(
+        images, args.ip,
+        top_margin=args.top_margin, bottom_margin=args.bottom_margin,
+        tape_size=args.tape_size)
 
 
 if __name__ == '__main__':
