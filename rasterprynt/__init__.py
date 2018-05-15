@@ -159,7 +159,6 @@ def render(images, ip=None,
 
     # number of dots in a stripe (depends on printer + tape size)
     stripe_size = STRIPE_SIZE.get((printer_model, tape_size), STRIPE_SIZE_DEFAULT)
-    print(tape_size, printer_model, stripe_size)
     assert stripe_size % 8 == 0
     stripe_count = stripe_size // 8
 
