@@ -81,6 +81,10 @@ def read_rows(bc):
         elif mode == MODE_RASTER and bc[p] == 0x1a:  # Print Command with feeding
             p += 1
             continue
+        elif bc[p] == 0x0c or bc[p] == 0x0f:
+            print('Form feed at position %x, ignoring' % p)
+            p += 1
+            continue
 
         # ESC code
         if bc[p] != 0x1b:
@@ -100,6 +104,9 @@ def read_rows(bc):
                 p += 1
                 mode = bc[p]
                 assert mode in (MODE_ESCP, MODE_RASTER, MODE_PTOUCH)
+            elif subcmd == ord('c'):  # Some kind of initialization
+                print('Unknown 9800PCN initialization')
+                p += 5
             elif subcmd == ord('U'):  # Serial bus configuration
                 p += 1
                 subsubcmd = bc[p]
@@ -197,6 +204,9 @@ def main():
         choices=['auto', 'pcap', 'bin'], default='auto',
         help='File format: binary data to the printer or pcap file. Auto-detects by default.')
     parser.add_argument(
+        '-w', '--write-bin', metavar='FILE.bin',
+        help='Write read binary file to disk.')
+    parser.add_argument(
         'input', metavar='INPUT_FILE',
         help='The .bin file of instructions to the Brother printer')
     parser.add_argument(
@@ -213,6 +223,10 @@ def main():
 
     if file_format == 'pcap':
         bc = parse_pcap(bc)
+
+    if args.write_bin:
+        with open(args.write_bin, 'wb') as bin_f:
+            bin_f.write(bc)
 
     rows = read_rows(bc)
 
