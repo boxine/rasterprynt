@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import io
 import struct
 
 
@@ -169,8 +170,32 @@ def plotimg(rows):
     )
 
 
+def detect_format(b):
+    if b[:4] in (b'\xa1\xb2\xc3\xd4', b'\xd4\xc3\xb2\xa1'):
+        return 'pcap'
+    return 'bin'
+
+
+def parse_pcap(b):
+    import scapy  # If this fails run pip3 install scapy
+    import scapy.all
+    TCP = scapy.all.TCP
+
+    pseudo_file = io.BytesIO(b)
+    pcap_file = scapy.all.rdpcap(pseudo_file)
+
+    return b''.join(
+        bytes(p[TCP].payload)
+        for p in pcap_file
+        if TCP in p and p[TCP].dport == 9100
+    )
+
 def main():
     parser = argparse.ArgumentParser('Plot the image which is going to be printed')
+    parser.add_argument(
+        '-f', '--format', metavar='FORMAT',
+        choices=['auto', 'pcap', 'bin'], default='auto',
+        help='File format: binary data to the printer or pcap file. Auto-detects by default.')
     parser.add_argument(
         'input', metavar='INPUT_FILE',
         help='The .bin file of instructions to the Brother printer')
@@ -181,6 +206,13 @@ def main():
 
     with open(args.input, 'rb') as input_f:
         bc = input_f.read()
+
+    file_format = args.format
+    if file_format == 'auto':
+        file_format = detect_format(bc)
+
+    if file_format == 'pcap':
+        bc = parse_pcap(bc)
 
     rows = read_rows(bc)
 
