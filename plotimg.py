@@ -197,6 +197,7 @@ def parse_pcap(b):
         if TCP in p and p[TCP].dport == 9100
     )
 
+
 def main():
     parser = argparse.ArgumentParser('Plot the image which is going to be printed')
     parser.add_argument(
