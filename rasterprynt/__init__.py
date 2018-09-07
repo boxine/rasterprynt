@@ -3,10 +3,12 @@ from __future__ import unicode_literals
 
 
 import argparse
+import collections
 import contextlib
 import logging
 import socket
 import struct
+import time
 
 try:
     from urllib.request import urlopen
@@ -36,22 +38,24 @@ TOP_MARGIN_DEFAULT = 8
 BOTTOM_MARGIN_DEFAULT = 8
 
 # Cache of IP address -> model name
+CACHE_TIMEOUT = 3600  # 1 hour
+PrinterCacheEntry = collections.namedtuple('PrinterCacheEntry', ['ip', 'timestamp', 'model'])
 _PRINTER_BY_IP = {}
 
 
 def detect_printer_model(ip):
     cached = _PRINTER_BY_IP.get(ip)
-    if cached:
-        return cached
+    if cached and cached.timestamp + CACHE_TIMEOUT < time.time():
+        return cached.model
 
     try:
-        res = _detect_printer_model_uncached(ip)
+        res_model = _detect_printer_model_uncached(ip)
     except URLError as urle:
         logging.warning('Failed to detect printer at %s: %s' % (ip, urle))
         return 'error'
-    if res:
-        _PRINTER_BY_IP[ip] = res
-    return res
+    if res_model:
+        _PRINTER_BY_IP[ip] = PrinterCacheEntry(ip, time.time(), res_model)
+    return res_model
 
 
 def _detect_printer_model_uncached(ip):
