@@ -282,7 +282,7 @@ def main():
         help='Margin after every image, in pixels (default: %(default)s)')
     parser.add_argument(
         '--tape-size', default=TAPE_SIZE_DEFAULT, metavar='SIZE',
-        help='Description of tape size (limited support, default: %(default)s)')
+        help='Description of tape size (limited support, 12mm, 18mm, 36mm, default: %(default)s)')
     args = parser.parse_args()
 
     if args.detect_device:
