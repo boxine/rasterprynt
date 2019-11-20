@@ -6,10 +6,10 @@ except ImportError:
     from distutils.core import setup
 
 setup(name='rasterprynt',
-      version='1.0.4',
+      version='1.0.5',
       description='Print raster graphics on Brother P950NW and 9800PCN',
-      author='Boxine GmbH',
-      author_email='it@boxine.de',
+      author='Philipp Hagemeister (Boxine GmbH)',
+      author_email='philipp.hagemeister@boxine.de',
       license='MIT',
       packages=['rasterprynt'],
       install_requires=[
