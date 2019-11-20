@@ -10,6 +10,7 @@ setup(name='rasterprynt',
       description='Print raster graphics on Brother P950NW and 9800PCN',
       author='Boxine GmbH',
       author_email='it@boxine.de',
+      license='MIT',
       packages=['rasterprynt'],
       install_requires=[
           'Pillow',
