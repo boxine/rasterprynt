@@ -246,9 +246,8 @@ def cat(images, ip=None,
 
 
 def send(data, ip):
-    sock = socket.create_connection((ip, 9100))
-    sock.sendall(data)
-    sock.close()
+    with socket.create_connection((ip, 9100)) as sock:
+        sock.sendall(data)
 
 
 def prynt(images, ip,
