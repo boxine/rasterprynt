@@ -7,7 +7,7 @@ rasterprynt is a Python library and program to print raster graphics on various 
 
 This uses an undocumented reverse-engineered protocol, similar to the one in use by [brother_ql](https://github.com/pklaus/brother_ql/tree/master/brother_ql).
 
-At the moment, the tape width is fixed at 18mm and the quality as high, but patches are always welcome.
+At the moment, the tape width is fixed at 18mm and the quality as high, but patches are always welcome. (12mm, 18mm, 36mm are available)
 
 ## Installation
 

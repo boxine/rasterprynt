@@ -26,6 +26,7 @@ logger = logging.getLogger('rasterprynt')
 
 # Size of a stripe (height in Brother-talk)
 STRIPE_SIZE = {
+    ('P950NW', '12mm'): 368,
     ('P950NW', '18mm'): 408,
     ('P950NW', '36mm'): 536,
     ('9800PCN', '18mm'): 312,
@@ -159,7 +160,7 @@ def render(images, ip=None,
     assert printer_model in ('P950NW', '9800PCN')
 
     # These are the only supported sizes so far
-    assert tape_size in ('18mm', '36mm')
+    assert tape_size in ('12mm', '18mm', '36mm')
 
     # number of dots in a stripe (depends on printer + tape size)
     stripe_size = STRIPE_SIZE.get((printer_model, tape_size), STRIPE_SIZE_DEFAULT)
@@ -280,7 +281,7 @@ def main():
         help='Margin after every image, in pixels (default: %(default)s)')
     parser.add_argument(
         '--tape-size', default=TAPE_SIZE_DEFAULT, metavar='SIZE',
-        help='Description of tape size (limited support, default: %(default)s)')
+        help='Description of tape size (limited support, 12mm, 18mm, 36mm, default: %(default)s)')
     args = parser.parse_args()
 
     if args.detect_device:
